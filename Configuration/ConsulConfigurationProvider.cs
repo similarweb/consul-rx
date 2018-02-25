@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Spiffy.Monitoring;
@@ -18,8 +14,10 @@ namespace ConsulRx.Configuration
         private readonly ServiceConfigMappingCollection _serviceConfigMappings;
         private readonly KVTreeConfigMappingCollection _kvTreeConfigMappings;
         private readonly KVItemConfigMappingCollection _kvItemConfigMappings;
+        private readonly KVItemConfigMappingCollection _kvJsonConfigMappings;
         private readonly bool _autoUpdate;
         private ConsulState _consulState;
+        private readonly JsonNodeParser _nodeParser = new JsonNodeParser();
 
         public ConsulConfigurationProvider(IObservableConsul consulClient,
             IEmergencyCache emergencyCache, 
@@ -27,6 +25,7 @@ namespace ConsulRx.Configuration
             ServiceConfigMappingCollection serviceConfigMappings,
             KVTreeConfigMappingCollection kvTreeConfigMappings,
             KVItemConfigMappingCollection kvItemConfigMappings,
+            KVItemConfigMappingCollection kvJsonConfigMappings,
             bool autoUpdate)
         {
             _consulClient = consulClient;
@@ -35,6 +34,7 @@ namespace ConsulRx.Configuration
             _serviceConfigMappings = serviceConfigMappings;
             _kvTreeConfigMappings = kvTreeConfigMappings;
             _kvItemConfigMappings = kvItemConfigMappings;
+            _kvJsonConfigMappings = kvJsonConfigMappings;
             _autoUpdate = autoUpdate;
         }
 
@@ -98,9 +98,25 @@ namespace ConsulRx.Configuration
             AddServiceData(data);
             AddKVTreeData(data);
             AddKVItemData(data);
+            AddKVJsonData(data);
 
             Data = data;
             _emergencyCache.Save(data);
+        }
+
+        private void AddKVJsonData(Dictionary<string, string> data)
+        {
+            foreach (var mapping in _kvJsonConfigMappings)
+            {
+                var value = _consulState.KVStore.GetValue(mapping.ConsulKey);
+                if (value != null)
+                {
+                    foreach (var keyValuePair in _nodeParser.Parse(value))
+                    {
+                        data[$"{mapping.ConfigKey}:{keyValuePair.Key}"] = keyValuePair.Value;
+                    }
+                }
+            }
         }
 
         private void AddKVItemData(Dictionary<string, string> data)

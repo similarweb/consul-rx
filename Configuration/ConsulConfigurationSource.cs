@@ -11,6 +11,7 @@ namespace ConsulRx.Configuration
         private readonly ServiceConfigMappingCollection _serviceConfigMappings = new ServiceConfigMappingCollection();
         private readonly KVTreeConfigMappingCollection _kvTreeConfigMappings = new KVTreeConfigMappingCollection();
         private readonly KVItemConfigMappingCollection _kvItemConfigMappings = new KVItemConfigMappingCollection();
+        private readonly KVItemConfigMappingCollection _kvJsonConfigMappings = new KVItemConfigMappingCollection();
         private IEmergencyCache _cache = new FileSystemEmergencyCache();
         private bool _autoUpdate;
 
@@ -122,6 +123,17 @@ namespace ConsulRx.Configuration
             return !condition(this) ? this : MapKey(consulKey, configKey);
         }
 
+        public ConsulConfigurationSource MapJson(string consulKey, string configKey)
+        {
+            _consulDependencies.Keys.Add(consulKey);
+            _kvJsonConfigMappings.Add(new KVItemConfigMapping(configKey, consulKey));
+
+            return this;
+        }
+        public ConsulConfigurationSource MapJson(Predicate<ConsulConfigurationSource> condition, string consulKey, string configKey)
+        {
+            return !condition(this) ? this : MapJson(consulKey, configKey);
+        }
         /// <summary>
         /// Configures a periodic, automatic update based on
         /// <paramref name="options"/>.
@@ -152,7 +164,7 @@ namespace ConsulRx.Configuration
 
         internal IConfigurationProvider Build(IObservableConsul consulClient)
         {
-            return new ConsulConfigurationProvider(consulClient, _cache, _consulDependencies, _serviceConfigMappings, _kvTreeConfigMappings, _kvItemConfigMappings, _autoUpdate);
+            return new ConsulConfigurationProvider(consulClient, _cache, _consulDependencies, _serviceConfigMappings, _kvTreeConfigMappings, _kvItemConfigMappings, _kvJsonConfigMappings, _autoUpdate);
         }
 
         internal ConsulConfigurationSource UseCache(IEmergencyCache cache)
