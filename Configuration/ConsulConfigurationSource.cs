@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using Microsoft.Extensions.Configuration;
 
 namespace ConsulRx.Configuration
@@ -13,7 +12,7 @@ namespace ConsulRx.Configuration
         private readonly KVTreeConfigMappingCollection _kvTreeConfigMappings = new KVTreeConfigMappingCollection();
         private readonly KVItemConfigMappingCollection _kvItemConfigMappings = new KVItemConfigMappingCollection();
         private IEmergencyCache _cache = new FileSystemEmergencyCache();
-        private bool _autoUpdate = false;
+        private bool _autoUpdate;
 
         public ConsulConfigurationSource()
         {
@@ -31,6 +30,10 @@ namespace ConsulRx.Configuration
 
             return this;
         }
+        public ConsulConfigurationSource Endpoint(Predicate<ConsulConfigurationSource> condition, string consulEndpoint)
+        {
+            return !condition(this) ? this : Endpoint(consulEndpoint);
+        }
 
         public ConsulConfigurationSource Endpoint(string consulEndpoint, string aclToken)
         {
@@ -38,6 +41,11 @@ namespace ConsulRx.Configuration
             _consulConfig.AclToken = aclToken;
 
             return this;
+        }
+
+        public ConsulConfigurationSource Endpoint(Predicate<ConsulConfigurationSource> condition, string consulEndpoint, string aclToken)
+        {
+            return !condition(this) ? this : Endpoint(consulEndpoint,aclToken);
         }
 
         public ConsulConfigurationSource MapService(string consulServiceName, string configKey,
@@ -48,7 +56,13 @@ namespace ConsulRx.Configuration
             
             return this;
         }
-        
+
+        public ConsulConfigurationSource MapService(Predicate<ConsulConfigurationSource> condition, string consulServiceName, string configKey,
+            Func<ServiceNode, string> endpointFormatter, Func<ServiceNode[], ServiceNode> nodeSelector)
+        {
+            return !condition(this) ? this : MapService(consulServiceName,configKey,endpointFormatter,nodeSelector);
+        }
+
         public ConsulConfigurationSource MapService(string consulServiceName, string configKey,
             Func<ServiceNode, string> endpointFormatter, Func<ServiceNode[], IEnumerable<ServiceNode>> nodeSelector)
         {
@@ -57,15 +71,29 @@ namespace ConsulRx.Configuration
             
             return this;
         }
+        public ConsulConfigurationSource MapService(Predicate<ConsulConfigurationSource> condition, string consulServiceName, string configKey,
+            Func<ServiceNode, string> endpointFormatter, Func<ServiceNode[], IEnumerable<ServiceNode>> nodeSelector)
+        {
+
+            return !condition(this) ? this : MapService(consulServiceName, configKey, endpointFormatter, nodeSelector);
+        }
 
         public ConsulConfigurationSource MapHttpService(string consulServiceName, string configKey)
         {
             return MapService(consulServiceName, configKey, EndpointFormatters.Http, NodeSelectors.First);
         }
-        
+        public ConsulConfigurationSource MapHttpService(Predicate<ConsulConfigurationSource> condition, string consulServiceName, string configKey)
+        {
+            return !condition(this) ? this : MapHttpService(consulServiceName, configKey);
+        }
+
         public ConsulConfigurationSource MapHttpsService(string consulServiceName, string configKey)
         {
             return MapService(consulServiceName, configKey, EndpointFormatters.Https, NodeSelectors.First);
+        }
+        public ConsulConfigurationSource MapHttpsService(Predicate<ConsulConfigurationSource> condition, string consulServiceName, string configKey)
+        {
+            return !condition(this) ? this : MapHttpsService(consulServiceName, configKey);
         }
 
         public ConsulConfigurationSource MapKeyPrefix(string consulKeyPrefix, string configKey)
@@ -76,12 +104,22 @@ namespace ConsulRx.Configuration
             return this;
         }
 
+        public ConsulConfigurationSource MapKeyPrefix(Predicate<ConsulConfigurationSource> condition, string consulKeyPrefix, string configKey)
+        {
+            return !condition(this) ? this : MapKeyPrefix(consulKeyPrefix, configKey);
+
+        }
+
         public ConsulConfigurationSource MapKey(string consulKey, string configKey)
         {
             _consulDependencies.Keys.Add(consulKey);
             _kvItemConfigMappings.Add(new KVItemConfigMapping(configKey, consulKey));
 
             return this;
+        }
+        public ConsulConfigurationSource MapKey(Predicate<ConsulConfigurationSource> condition, string consulKey, string configKey)
+        {
+            return !condition(this) ? this : MapKey(consulKey, configKey);
         }
 
         /// <summary>
